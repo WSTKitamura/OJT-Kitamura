@@ -1,11 +1,12 @@
 const input = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const status = document.getElementById("status");
+const button = document.getElementById("uploadButton");
 
-// ▼ 1. 画像プレビュー機能
+// 画像プレビュー
 input.addEventListener("change", () => {
   const file = input.files[0];
-  if (file) {
+  if (file && file.type.startsWith("image/")) {
     const reader = new FileReader();
     reader.onload = (e) => {
       preview.src = e.target.result;
@@ -14,7 +15,7 @@ input.addEventListener("change", () => {
   }
 });
 
-// ▼ 2. 画像を Azure Functions に送信して検索
+// 画像を送信して検索
 async function uploadAndSearch() {
   const file = input.files[0];
   if (!file) {
@@ -23,11 +24,12 @@ async function uploadAndSearch() {
   }
 
   status.textContent = "検索中...";
+  status.className = "";
+  button.disabled = true;
 
   try {
-    // Azure Functions のエンドポイントに送信
     const response = await fetch(
-      "https://brave-hill-0df254e00.6.azurestaticapps.net//api/imageToVector",
+      "https://brave-hill-0df254e00.6.azurestaticapps.net/api/imageToVector",
       {
         method: "POST",
         headers: {
@@ -38,25 +40,21 @@ async function uploadAndSearch() {
     );
 
     if (!response.ok) {
-      throw new Error(`HTTP エラー: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
+    const similarImages = result.similarImages || [];
 
-    // ▼ 仮：似た画像のURLリスト（OpenAIで検索した結果に置き換える）
-    const similarImages = result.similarImages || [
-      "https://via.placeholder.com/200x200?text=Image+1",
-      "https://via.placeholder.com/200x200?text=Image+2",
-      "https://via.placeholder.com/200x200?text=Image+3",
-      "https://via.placeholder.com/200x200?text=Image+4",
-      "https://via.placeholder.com/200x200?text=Image+5",
-      "https://via.placeholder.com/200x200?text=Image+6",
-    ];
-
-    // ▼ ローカルストレージに保存して次のページへ
     localStorage.setItem("similarImages", JSON.stringify(similarImages));
+    status.textContent = "検索完了、結果ページへ移動します。";
+    status.className = "success";
     window.location.href = "results.html";
   } catch (err) {
     status.textContent = "検索に失敗しました: " + err.message;
+    status.className = "error";
+  } finally {
+    button.disabled = false;
   }
 }
