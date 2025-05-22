@@ -2,37 +2,25 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <title>検索結果</title>
-    <style>
-      img {
-        max-width: 200px;
-        margin: 10px;
-      }
-      .grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>画像検索</title>
   </head>
   <body>
-    <h1>似ている画像（6件）</h1>
-    <div id="grid" class="grid"></div>
+    <h1>画像で検索</h1>
 
-    <script>
-      const sampleImages = JSON.parse(localStorage.getItem("similarImages"));
+    <label for="imageInput">画像を選択:</label>
+    <input type="file" id="imageInput" accept="image/*" />
 
-      const grid = document.getElementById("grid");
+    <img
+      id="preview"
+      alt="選択された画像プレビュー"
+      style="max-width: 300px; display: block; margin-top: 10px"
+    />
 
-      if (sampleImages && sampleImages.length) {
-        for (const url of sampleImages) {
-          const img = document.createElement("img");
-          img.src = url;
-          grid.appendChild(img);
-        }
-      } else {
-        grid.innerHTML = "<p>似ている画像が見つかりませんでした。</p>";
-      }
-    </script>
+    <button type="button" onclick="uploadAndSearch()">検索</button>
+
+    <div id="status" aria-live="polite"></div>
+
+    <script src="script.js"></script>
   </body>
 </html>

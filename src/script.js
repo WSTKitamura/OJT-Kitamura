@@ -1,35 +1,31 @@
 const input = document.getElementById("imageInput");
-const resultsDiv = document.getElementById("results");
+const preview = document.getElementById("preview");
+const status = document.getElementById("status");
 
-// 画像表示用のimg要素を作る
-const preview = document.createElement("img");
-preview.style.maxWidth = "300px";
-preview.style.marginTop = "10px";
-input.parentNode.insertBefore(preview, resultsDiv);
-
+// ▼ 1. 画像プレビュー機能
 input.addEventListener("change", () => {
   const file = input.files[0];
   if (file) {
     const reader = new FileReader();
-    reader.onload = function (e) {
-      preview.src = e.target.result; // 選択した画像のデータURLをセット
+    reader.onload = (e) => {
+      preview.src = e.target.result;
     };
     reader.readAsDataURL(file);
-  } else {
-    preview.src = "";
   }
 });
 
+// ▼ 2. 画像を Azure Functions に送信して検索
 async function uploadAndSearch() {
-  if (input.files.length === 0) {
-    alert("画像を選択してください");
+  const file = input.files[0];
+  if (!file) {
+    alert("画像を選択してください。");
     return;
   }
 
-  const file = input.files[0];
-  resultsDiv.textContent = "検索中…";
+  status.textContent = "検索中...";
 
   try {
+    // Azure Functions のエンドポイントに送信
     const response = await fetch(
       "https://brave-hill-0df254e00.6.azurestaticapps.net//api/imageToVector",
       {
@@ -42,34 +38,25 @@ async function uploadAndSearch() {
     );
 
     if (!response.ok) {
-      throw new Error(`HTTPエラー: ${response.status}`);
+      throw new Error(`HTTP エラー: ${response.status}`);
     }
 
-    const data = await response.json();
+    const result = await response.json();
 
-    resultsDiv.innerHTML = `
-      <h2>画像の特徴</h2>
-      <p>${data.description}</p>
-      <h3>ベクトル（最初の10要素）</h3>
-      <pre>${data.embedding
-        .slice(0, 10)
-        .map((n) => n.toFixed(4))
-        .join(", ")}</pre>
-    `;
+    // ▼ 仮：似た画像のURLリスト（OpenAIで検索した結果に置き換える）
+    const similarImages = result.similarImages || [
+      "https://via.placeholder.com/200x200?text=Image+1",
+      "https://via.placeholder.com/200x200?text=Image+2",
+      "https://via.placeholder.com/200x200?text=Image+3",
+      "https://via.placeholder.com/200x200?text=Image+4",
+      "https://via.placeholder.com/200x200?text=Image+5",
+      "https://via.placeholder.com/200x200?text=Image+6",
+    ];
+
+    // ▼ ローカルストレージに保存して次のページへ
+    localStorage.setItem("similarImages", JSON.stringify(similarImages));
+    window.location.href = "results.html";
   } catch (err) {
-    resultsDiv.textContent = `エラーが発生しました: ${err.message}`;
+    status.textContent = "検索に失敗しました: " + err.message;
   }
-
-  const similarImages = [
-    "https://example.com/image1.jpg",
-    "https://example.com/image2.jpg",
-    "https://example.com/image3.jpg",
-    "https://example.com/image4.jpg",
-    "https://example.com/image5.jpg",
-    "https://example.com/image6.jpg",
-  ];
-
-  localStorage.setItem("similarImages", JSON.stringify(similarImages));
-
-  window.location.href = "results.html";
 }
