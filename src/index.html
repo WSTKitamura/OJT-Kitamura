@@ -1,60 +1,226 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AE86 vs シルエイティ 2Dアニメ＋画像検索</title>
-<style>
-  body {
-    background: #111;
-    margin: 0;
-    padding: 10px;
-    color: white;
-    font-family: sans-serif;
-  }
-  canvas {
-    background: #222;
-    border: 2px solid #555;
-    display: block;
-    margin: 10px auto;
-  }
-  #controls {
-    text-align: center;
-    margin-top: 20px;
-  }
-  #preview {
-    max-width: 300px;
-    display: block;
-    margin: 10px auto;
-    border: 1px solid #555;
-  }
-  #results {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  #results img {
-    max-width: 120px;
-    cursor: pointer;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    transition: border-color 0.3s;
-  }
-  #results img:hover {
-    border-color: #f90;
-  }
-  #status {
-    text-align: center;
-    margin-top: 10px;
-  }
-</style>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AE86 vs シルエイティ 2Dアニメ＋画像検索</title>
+    <style>
+      body {
+        background: #111;
+        margin: 0;
+        padding: 10px;
+        color: white;
+        font-family: sans-serif;
+      }
+      canvas {
+        background: #222;
+        border: 2px solid #555;
+        display: block;
+        margin: 10px auto;
+      }
+      #controls {
+        text-align: center;
+        margin-top: 20px;
+      }
+      #preview {
+        max-width: 300px;
+        display: block;
+        margin: 10px auto;
+        border: 1px solid #555;
+      }
+      #results {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      #results img {
+        max-width: 120px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        border-radius: 4px;
+        transition: border-color 0.3s;
+      }
+      #results img:hover {
+        border-color: #f90;
+      }
+      #status {
+        text-align: center;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 style="text-align: center">AE86 vs シルエイティ 2Dアニメ＋画像検索</h1>
 
-<h1 style="text-align:center;">AE86 vs シルエイティ 2Dアニメ＋画像検索</h1>
+    <canvas id="battleCanvas" width="600" height="300"></canvas>
 
-<canvas id="battleCanvas" width="600" height="300"></canvas>
+    <div id="controls">
+      <label for="imageInput">画像を選択:</label>
+      <input type="file" id="imageInput" accept="image/*" />
+      <br />
+      <img id="preview" alt="選択画像プレビュー" />
+      <br />
+      <button id="searchBtn">検索</button>
+      <div id="status" aria-live="polite"></div>
+    </div>
 
-<div id="contro
+    <div id="results"></div>
+
+    <script>
+      const canvas = document.getElementById("battleCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const carWidth = 120;
+      const carHeight = 50;
+      const tireRadius = 12;
+
+      const car1 = { x: 50, y: 180, color: "#E63946", dir: 1, name: "AE86" };
+      const car2 = {
+        x: 430,
+        y: 180,
+        color: "#457B9D",
+        dir: -1,
+        name: "SilEighty",
+      };
+
+      let collision = false;
+      let collisionTimer = 0;
+
+      function drawCar(car) {
+        ctx.fillStyle = car.color;
+        ctx.fillRect(car.x, car.y - carHeight, carWidth, carHeight);
+
+        ctx.fillStyle = "#222";
+        ctx.beginPath();
+        ctx.arc(car.x + 25, car.y, tireRadius, 0, Math.PI * 2);
+        ctx.arc(car.x + carWidth - 25, car.y, tireRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#ddd";
+        ctx.fillRect(car.x + 40, car.y - carHeight + 10, 40, 20);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "14px sans-serif";
+        ctx.fillText(car.name, car.x + 10, car.y - carHeight - 10);
+      }
+
+      function drawCollisionEffect(x, y) {
+        const maxRadius = 40;
+        const progress = collisionTimer / 20;
+        const radius = maxRadius * progress;
+        const alpha = 1 - progress;
+
+        ctx.strokeStyle = `rgba(255, 255, 100, ${alpha})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!collision) {
+          car1.x += 2 * car1.dir;
+          car2.x += 2 * car2.dir;
+
+          if (car2.x <= car1.x + carWidth) {
+            collision = true;
+            collisionTimer = 0;
+          }
+        } else {
+          collisionTimer++;
+          if (collisionTimer > 20) {
+            collision = false;
+            car1.x = 50;
+            car2.x = 430;
+          }
+        }
+
+        drawCar(car1);
+        drawCar(car2);
+
+        if (collision) {
+          const collisionX = (car1.x + car2.x + carWidth) / 2;
+          const collisionY = car1.y - carHeight / 2;
+          drawCollisionEffect(collisionX, collisionY);
+        }
+
+        requestAnimationFrame(update);
+      }
+
+      update();
+
+      // 画像アップロード・検索機能
+      const input = document.getElementById("imageInput");
+      const preview = document.getElementById("preview");
+      const status = document.getElementById("status");
+      const results = document.getElementById("results");
+      const searchBtn = document.getElementById("searchBtn");
+
+      input.addEventListener("change", () => {
+        const file = input.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            preview.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          preview.src = "";
+        }
+      });
+
+      searchBtn.addEventListener("click", async () => {
+        const file = input.files[0];
+        if (!file) {
+          alert("画像を選択してください。");
+          return;
+        }
+        status.textContent = "検索中...";
+
+        try {
+          const response = await fetch(
+            "https://brave-hill-0df254e00.6.azurestaticapps.net/api/imageToVector",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/octet-stream",
+              },
+              body: file,
+            }
+          );
+
+          if (!response.ok) throw new Error(`HTTPエラー: ${response.status}`);
+
+          const result = await response.json();
+
+          const similarImages = result.similarImages || [
+            "https://via.placeholder.com/120?text=Image+1",
+            "https://via.placeholder.com/120?text=Image+2",
+            "https://via.placeholder.com/120?text=Image+3",
+          ];
+
+          // 結果表示クリア
+          results.innerHTML = "";
+
+          similarImages.forEach((url) => {
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = "似ている画像";
+            img.addEventListener("click", () => {
+              window.open(url, "_blank");
+            });
+            results.appendChild(img);
+          });
+
+          status.textContent = "検索完了";
+        } catch (err) {
+          status.textContent = "検索に失敗しました: " + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>
