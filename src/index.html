@@ -2,184 +2,182 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>AE86 vs シルエイティ 2Dアニメ＋画像検索</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D背景付き画像検索</title>
     <style>
-      body {
-        background: #111;
+      /* 画面いっぱいにキャンバス */
+      body,
+      html {
         margin: 0;
-        padding: 10px;
-        color: white;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
         font-family: sans-serif;
       }
-      canvas {
-        background: #222;
-        border: 2px solid #555;
+      #bgCanvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
         display: block;
-        margin: 10px auto;
       }
-      #controls {
+      .container {
+        position: relative;
+        z-index: 10;
+        width: 320px;
+        margin: auto;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.85);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        padding: 20px;
         text-align: center;
-        margin-top: 20px;
       }
-      #preview {
+      img {
         max-width: 300px;
-        display: block;
-        margin: 10px auto;
-        border: 1px solid #555;
-      }
-      #results {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 20px;
-      }
-      #results img {
-        max-width: 120px;
-        cursor: pointer;
-        border: 2px solid transparent;
-        border-radius: 4px;
-        transition: border-color 0.3s;
-      }
-      #results img:hover {
-        border-color: #f90;
+        margin-top: 10px;
       }
       #status {
-        text-align: center;
         margin-top: 10px;
+        font-weight: bold;
+      }
+      #status.error {
+        color: red;
+      }
+      #status.success {
+        color: green;
+      }
+      button {
+        margin-top: 10px;
+        padding: 8px 20px;
+        font-size: 1rem;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        background-color: #0066ff;
+        color: white;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #004bbb;
       }
     </style>
   </head>
   <body>
-    <h1 style="text-align: center">AE86 vs シルエイティ 2Dアニメ＋画像検索</h1>
+    <!-- 3D描画用キャンバス -->
+    <canvas id="bgCanvas"></canvas>
 
-    <canvas id="battleCanvas" width="600" height="300"></canvas>
-
-    <div id="controls">
-      <label for="imageInput">画像を選択:</label>
+    <div class="container">
+      <h1>画像で検索</h1>
+      <label for="imageInput">画像を選択:</label><br />
       <input type="file" id="imageInput" accept="image/*" />
+      <img id="preview" alt="選択された画像プレビュー" />
       <br />
-      <img id="preview" alt="選択画像プレビュー" />
-      <br />
-      <button id="searchBtn">検索</button>
+      <button type="button" id="uploadButton" onclick="uploadAndSearch()">
+        検索
+      </button>
       <div id="status" aria-live="polite"></div>
     </div>
 
-    <div id="results"></div>
-
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
     <script>
-      const canvas = document.getElementById("battleCanvas");
-      const ctx = canvas.getContext("2d");
+      // Three.jsで簡単な動く背景
+      const canvas = document.getElementById("bgCanvas");
+      const renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        antialias: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x0a0a0a, 1);
 
-      const carWidth = 120;
-      const carHeight = 50;
-      const tireRadius = 12;
+      const scene = new THREE.Scene();
 
-      const car1 = { x: 50, y: 180, color: "#E63946", dir: 1, name: "AE86" };
-      const car2 = {
-        x: 430,
-        y: 180,
-        color: "#457B9D",
-        dir: -1,
-        name: "SilEighty",
-      };
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.z = 5;
 
-      let collision = false;
-      let collisionTimer = 0;
+      // シンプルな動く立方体群を作る例
+      const cubes = [];
+      const cubeCount = 50;
 
-      function drawCar(car) {
-        ctx.fillStyle = car.color;
-        ctx.fillRect(car.x, car.y - carHeight, carWidth, carHeight);
-
-        ctx.fillStyle = "#222";
-        ctx.beginPath();
-        ctx.arc(car.x + 25, car.y, tireRadius, 0, Math.PI * 2);
-        ctx.arc(car.x + carWidth - 25, car.y, tireRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = "#ddd";
-        ctx.fillRect(car.x + 40, car.y - carHeight + 10, 40, 20);
-
-        ctx.fillStyle = "#fff";
-        ctx.font = "14px sans-serif";
-        ctx.fillText(car.name, car.x + 10, car.y - carHeight - 10);
+      for (let i = 0; i < cubeCount; i++) {
+        const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        const material = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+        });
+        const cube = new THREE.Mesh(geometry, material);
+        cube.position.set(
+          (Math.random() - 0.5) * 10,
+          (Math.random() - 0.5) * 6,
+          (Math.random() - 0.5) * 10
+        );
+        scene.add(cube);
+        cubes.push(cube);
       }
 
-      function drawCollisionEffect(x, y) {
-        const maxRadius = 40;
-        const progress = collisionTimer / 20;
-        const radius = maxRadius * progress;
-        const alpha = 1 - progress;
+      // 環境光＋点光源
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
 
-        ctx.strokeStyle = `rgba(255, 255, 100, ${alpha})`;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.stroke();
+      const pointLight = new THREE.PointLight(0xffffff, 0.8);
+      pointLight.position.set(5, 5, 5);
+      scene.add(pointLight);
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        // 立方体を回転させる
+        cubes.forEach((cube, i) => {
+          cube.rotation.x += 0.01 + i * 0.0005;
+          cube.rotation.y += 0.01 + i * 0.0007;
+        });
+
+        renderer.render(scene, camera);
       }
+      animate();
 
-      function update() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // リサイズ対応
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
 
-        if (!collision) {
-          car1.x += 2 * car1.dir;
-          car2.x += 2 * car2.dir;
+      // --------- 以下、アップロード＆検索の処理（さきほどの例） -----------
 
-          if (car2.x <= car1.x + carWidth) {
-            collision = true;
-            collisionTimer = 0;
-          }
-        } else {
-          collisionTimer++;
-          if (collisionTimer > 20) {
-            collision = false;
-            car1.x = 50;
-            car2.x = 430;
-          }
-        }
-
-        drawCar(car1);
-        drawCar(car2);
-
-        if (collision) {
-          const collisionX = (car1.x + car2.x + carWidth) / 2;
-          const collisionY = car1.y - carHeight / 2;
-          drawCollisionEffect(collisionX, collisionY);
-        }
-
-        requestAnimationFrame(update);
-      }
-
-      update();
-
-      // 画像アップロード・検索機能
       const input = document.getElementById("imageInput");
       const preview = document.getElementById("preview");
       const status = document.getElementById("status");
-      const results = document.getElementById("results");
-      const searchBtn = document.getElementById("searchBtn");
+      const button = document.getElementById("uploadButton");
 
       input.addEventListener("change", () => {
         const file = input.files[0];
-        if (file) {
+        if (file && file.type.startsWith("image/")) {
           const reader = new FileReader();
           reader.onload = (e) => {
             preview.src = e.target.result;
           };
           reader.readAsDataURL(file);
-        } else {
-          preview.src = "";
         }
       });
 
-      searchBtn.addEventListener("click", async () => {
+      async function uploadAndSearch() {
         const file = input.files[0];
         if (!file) {
           alert("画像を選択してください。");
           return;
         }
+
         status.textContent = "検索中...";
+        status.className = "";
+        button.disabled = true;
 
         try {
           const response = await fetch(
@@ -193,34 +191,25 @@
             }
           );
 
-          if (!response.ok) throw new Error(`HTTPエラー: ${response.status}`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`${response.status} - ${errorText}`);
+          }
 
           const result = await response.json();
+          const similarImages = result.similarImages || [];
 
-          const similarImages = result.similarImages || [
-            "https://via.placeholder.com/120?text=Image+1",
-            "https://via.placeholder.com/120?text=Image+2",
-            "https://via.placeholder.com/120?text=Image+3",
-          ];
-
-          // 結果表示クリア
-          results.innerHTML = "";
-
-          similarImages.forEach((url) => {
-            const img = document.createElement("img");
-            img.src = url;
-            img.alt = "似ている画像";
-            img.addEventListener("click", () => {
-              window.open(url, "_blank");
-            });
-            results.appendChild(img);
-          });
-
-          status.textContent = "検索完了";
+          localStorage.setItem("similarImages", JSON.stringify(similarImages));
+          status.textContent = "検索完了、結果ページへ移動します。";
+          status.className = "success";
+          window.location.href = "results.html";
         } catch (err) {
           status.textContent = "検索に失敗しました: " + err.message;
+          status.className = "error";
+        } finally {
+          button.disabled = false;
         }
-      });
+      }
     </script>
   </body>
 </html>
