@@ -1,20 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="styles.css" />
-    <title>Iam</title>
+    <title>検索結果</title>
+    <style>
+      img {
+        max-width: 200px;
+        margin: 10px;
+      }
+      .grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+    </style>
   </head>
-
   <body>
-    <main>
-      <h1>画像アップロードで検索</h1>
-      <label for="imageInput">画像を選択:</label>
-      <input type="file" id="imageInput" />
-      <button onclick="uploadAndSearch()">検索</button>
-      <div id="results"></div>
-      <script src="script.js"></script>
-    </main>
+    <h1>似ている画像（6件）</h1>
+    <div id="grid" class="grid"></div>
+
+    <script>
+      const sampleImages = JSON.parse(localStorage.getItem("similarImages"));
+
+      const grid = document.getElementById("grid");
+
+      if (sampleImages && sampleImages.length) {
+        for (const url of sampleImages) {
+          const img = document.createElement("img");
+          img.src = url;
+          grid.appendChild(img);
+        }
+      } else {
+        grid.innerHTML = "<p>似ている画像が見つかりませんでした。</p>";
+      }
+    </script>
   </body>
 </html>

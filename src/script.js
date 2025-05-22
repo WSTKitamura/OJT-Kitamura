@@ -59,4 +59,17 @@ async function uploadAndSearch() {
   } catch (err) {
     resultsDiv.textContent = `エラーが発生しました: ${err.message}`;
   }
+
+  const similarImages = [
+    "https://example.com/image1.jpg",
+    "https://example.com/image2.jpg",
+    "https://example.com/image3.jpg",
+    "https://example.com/image4.jpg",
+    "https://example.com/image5.jpg",
+    "https://example.com/image6.jpg",
+  ];
+
+  localStorage.setItem("similarImages", JSON.stringify(similarImages));
+
+  window.location.href = "results.html";
 }
