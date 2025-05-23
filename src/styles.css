@@ -25,24 +25,3 @@ main > h1 {
   -webkit-user-select: none; /* Safari用 */
   user-select: none; /* その他モダンブラウザ用 */
 }
-
-.element {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-
-  cursor: default;
-  user-drag: none;
-  -webkit-user-drag: none;
-
-  /* 選択禁止部分にうっすら影やボーダーで質感 */
-  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.element {
-  -webkit-user-select: none; /* Safari対応 */
-  -moz-user-select: none; /* Firefox対応 */
-  -ms-user-select: none; /* IE対応 */
-  user-select: none; /* モダンブラウザ対応 */
-}

@@ -3,7 +3,6 @@ const preview = document.getElementById("preview");
 const status = document.getElementById("status");
 const button = document.getElementById("uploadButton");
 
-// 画像プレビュー
 input.addEventListener("change", () => {
   const file = input.files[0];
   if (file && file.type.startsWith("image/")) {
@@ -15,7 +14,6 @@ input.addEventListener("change", () => {
   }
 });
 
-// 画像を送信して検索
 async function uploadAndSearch() {
   const file = input.files[0];
   if (!file) {
@@ -41,7 +39,7 @@ async function uploadAndSearch() {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`${response.status} - ${errorText}`);
+      throw new Error($, { respon, sestatus } - $, { errorText });
     }
 
     const result = await response.json();
@@ -57,4 +55,9 @@ async function uploadAndSearch() {
   } finally {
     button.disabled = false;
   }
+  const pointLight = new THREE.PointLight(0xffffff, 1);
+  pointLight.position.set(5, 5, 5);
+  scene.add(pointLight);
+
+  let colorHue = 0;
 }
