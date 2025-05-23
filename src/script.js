@@ -1,50 +1,60 @@
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const input = document.getElementById("imageInput");
+const preview = document.getElementById("preview");
+const status = document.getElementById("status");
+const button = document.getElementById("uploadButton");
 
-let playerY = canvas.height / 2;
-let velocity = 0;
-let gravity = 0.5;
-let isSpacePressed = false;
-
-document.addEventListener("keydown", (e) => {
-  if (e.code === "Space") {
-    isSpacePressed = true;
-    velocity = -8; // 上にジャンプする力
+// 画像プレビュー
+input.addEventListener("change", () => {
+  const file = input.files[0];
+  if (file && file.type.startsWith("image/")) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      preview.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 });
 
-function update() {
-  if (isSpacePressed) {
-    velocity += gravity;
-    playerY += velocity;
+// 画像を送信して検索
+async function uploadAndSearch() {
+  const file = input.files[0];
+  if (!file) {
+    alert("画像を選択してください。");
+    return;
+  }
 
-    if (playerY > canvas.height - 20) {
-      // 床に着いたら
-      playerY = canvas.height - 20;
-      velocity = 0;
-      isSpacePressed = false;
+  status.textContent = "検索中...";
+  status.className = "";
+  button.disabled = true;
+
+  try {
+    const response = await fetch(
+      "https://brave-hill-0df254e00.6.azurestaticapps.net/api/imageToVector",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+        body: file,
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${response.status} - ${errorText}`);
     }
 
-    if (playerY < 20) {
-      // 天井に当たったら
-      playerY = 20;
-      velocity = 0;
-    }
+    const result = await response.json();
+    const similarImages = result.similarImages || [];
+
+    localStorage.setItem("similarImages", JSON.stringify(similarImages));
+    status.textContent = "検索完了、結果ページへ移動します。";
+    status.className = "success";
+    window.location.href = "results.html";
+  } catch (err) {
+    status.textContent = "検索に失敗しました: " + err.message;
+    status.className = "error";
+  } finally {
+    button.disabled = false;
   }
 }
-
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "blue";
-  ctx.beginPath();
-  ctx.arc(50, playerY, 15, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();

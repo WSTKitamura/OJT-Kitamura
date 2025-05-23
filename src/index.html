@@ -2,132 +2,39 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>シンプル避けゲー</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>画像検索</title>
     <style>
-      body {
-        text-align: center;
-        background: #222;
-        color: white;
-      }
-      canvas {
-        background: #333;
-        display: block;
-        margin: 20px auto;
-      }
       #status {
-        font-size: 1.2em;
         margin-top: 10px;
+        font-weight: bold;
+      }
+      #status.error {
+        color: red;
+      }
+      #status.success {
+        color: green;
       }
     </style>
   </head>
   <body>
-    <h1>ブロック避けゲーム</h1>
-    <canvas id="game" width="400" height="300"></canvas>
-    <div id="status"></div>
+    <h1>画像で検索</h1>
 
-    <script>
-      const canvas = document.getElementById("game");
-      const ctx = canvas.getContext("2d");
+    <label for="imageInput">画像を選択:</label>
+    <input type="file" id="imageInput" accept="image/*" />
 
-      let player = { x: 50, y: 130, width: 20, height: 20, dy: 0 };
-      let obstacles = [];
-      let frameCount = 0;
-      let gameOver = false;
-      const gravity = 0.5;
-      const jumpStrength = -10;
+    <img
+      id="preview"
+      alt="選択された画像プレビュー"
+      style="max-width: 300px; display: block; margin-top: 10px"
+    />
 
-      document.addEventListener("keydown", (e) => {
-        if (e.code === "Space" && !gameOver) {
-          player.dy = jumpStrength;
-        }
-      });
+    <button type="button" id="uploadButton" onclick="uploadAndSearch()">
+      検索
+    </button>
 
-      function createObstacle() {
-        const height = 30 + Math.random() * 40;
-        obstacles.push({
-          x: canvas.width,
-          y: canvas.height - height,
-          width: 20,
-          height,
-        });
-      }
+    <div id="status" aria-live="polite"></div>
 
-      function update() {
-        if (gameOver) return;
-
-        frameCount++;
-
-        // プレイヤーのジャンプ・落下
-        player.dy += gravity;
-        player.y += player.dy;
-
-        if (player.y + player.height > canvas.height) {
-          player.y = canvas.height - player.height;
-          player.dy = 0;
-        }
-
-        // 障害物追加
-        if (frameCount % 90 === 0) {
-          createObstacle();
-        }
-
-        // 障害物移動
-        obstacles.forEach((obs) => {
-          obs.x -= 3;
-        });
-
-        // 画面外障害物削除
-        obstacles = obstacles.filter((obs) => obs.x + obs.width > 0);
-
-        // 衝突判定
-        obstacles.forEach((obs) => {
-          if (
-            player.x < obs.x + obs.width &&
-            player.x + player.width > obs.x &&
-            player.y < obs.y + obs.height &&
-            player.y + player.height > obs.y
-          ) {
-            gameOver = true;
-            document.getElementById("status").textContent =
-              "ゲームオーバー！スペースキーでリスタート";
-          }
-        });
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // プレイヤー描画
-        ctx.fillStyle = "deepskyblue";
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-
-        // 障害物描画
-        ctx.fillStyle = "tomato";
-        obstacles.forEach((obs) => {
-          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-        });
-      }
-
-      function loop() {
-        update();
-        draw();
-        requestAnimationFrame(loop);
-      }
-
-      document.addEventListener("keydown", (e) => {
-        if (gameOver && e.code === "Space") {
-          // リセット処理
-          obstacles = [];
-          player.y = 130;
-          player.dy = 0;
-          frameCount = 0;
-          gameOver = false;
-          document.getElementById("status").textContent = "";
-        }
-      });
-
-      loop();
-    </script>
+    <script src="script.js"></script>
   </body>
 </html>
