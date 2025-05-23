@@ -2,6 +2,27 @@ const input = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const status = document.getElementById("status");
 const button = document.getElementById("uploadButton");
+const cubeVelocities = [];
+
+const material = new THREE.MeshStandardMaterial({
+  color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+  emissive: new THREE.Color(Math.random(), Math.random(), Math.random()),
+  emissiveIntensity: 0.8,
+  metalness: 0.3,
+  roughness: 0.4,
+});
+
+let pulse = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  pulse = Math.abs(Math.sin(Date.now() * 0.001));
+  cubes.forEach((cube, i) => {
+    cube.rotation.x += 0.01 + i * 0.0005;
+    cube.rotation.y += 0.01 + i * 0.0007;
+    cube.material.emissiveIntensity = 0.3 + 0.7 * pulse;
+  });
+  renderer.render(scene, camera);
+}
 
 input.addEventListener("change", () => {
   const file = input.files[0];
@@ -39,7 +60,9 @@ async function uploadAndSearch() {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error($, { respon, sestatus } - $, { errorText });
+      throw new Error(
+        `ステータス: ${response.status}, メッセージ: ${errorText}`
+      );
     }
 
     const result = await response.json();
@@ -55,9 +78,4 @@ async function uploadAndSearch() {
   } finally {
     button.disabled = false;
   }
-  const pointLight = new THREE.PointLight(0xffffff, 1);
-  pointLight.position.set(5, 5, 5);
-  scene.add(pointLight);
-
-  let colorHue = 0;
 }
