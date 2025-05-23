@@ -2,7 +2,21 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>検索結果</title>
+    <style>
+      #results img {
+        width: 150px;
+        margin: 10px;
+        border-radius: 8px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+      }
+      #results {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: start;
+      }
+    </style>
   </head>
   <body>
     <h1>検索結果</h1>
@@ -20,8 +34,6 @@
         similarImages.forEach((url) => {
           const img = document.createElement("img");
           img.src = url;
-          img.style.width = "150px";
-          img.style.margin = "10px";
           container.appendChild(img);
         });
       }

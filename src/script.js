@@ -1,24 +1,39 @@
-// --- THREE.jsシーンセットアップ ---
-// ここは既にscene, camera, rendererが初期化されている想定です
+// --- THREE.js 基本セットアップ ---
+const scene = new THREE.Scene();
 
-let lastTime = 0;
-const fpsInterval = 1000 / 30; // 30fps
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.z = 10;
 
-// プレイヤー作成
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// --- 環境光・ライト ---
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambientLight);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+directionalLight.position.set(5, 10, 5);
+scene.add(directionalLight);
+
+const pointLight = new THREE.PointLight(0xffffff, 1);
+pointLight.position.set(5, 5, 5);
+scene.add(pointLight);
+
+// --- プレイヤー作成 ---
 const playerGeometry = new THREE.SphereGeometry(0.2, 32, 32);
 const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x00aaff });
 const player = new THREE.Mesh(playerGeometry, playerMaterial);
 scene.add(player);
 player.position.set(-3, 0, 0);
 
-// プレイヤー移動目標Y座標
 let playerY = 0;
-
-// キー状態管理
-const keyState = {
-  ArrowUp: false,
-  ArrowDown: false,
-};
+const keyState = { ArrowUp: false, ArrowDown: false };
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowUp" || e.key === "ArrowDown") {
@@ -31,28 +46,15 @@ document.addEventListener("keyup", (e) => {
   }
 });
 
-// ブロック群管理
+// --- 障害物（ブロック）グループ ---
 const obstacleGroup = new THREE.Group();
 scene.add(obstacleGroup);
 
-// テクスチャローダー
 const textureLoader = new THREE.TextureLoader();
 const blockTexture = textureLoader.load(
   "https://threejsfundamentals.org/threejs/resources/images/wall.jpg"
 );
-const normalMap = textureLoader.load("path/to/normal_map.jpg");
-
-// ライト設定
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-directionalLight.position.set(5, 10, 5);
-scene.add(directionalLight);
-
-const pointLight = new THREE.PointLight(0xffffff, 1);
-pointLight.position.set(5, 5, 5);
-scene.add(pointLight);
-
-// ステータス表示用要素
-const status = document.getElementById("status");
+const normalMap = textureLoader.load("path/to/normal_map.jpg"); // 適切なパスに変更必須
 
 // --- ブロック作成関数 ---
 function createHighQualityBlock() {
@@ -65,8 +67,8 @@ function createHighQualityBlock() {
     map: blockTexture,
     roughness: 0.3,
     metalness: 0.2,
-    color: new THREE.Color().setHSL(Math.random(), 0.6, 0.5),
     normalMap: normalMap,
+    color: new THREE.Color().setHSL(Math.random(), 0.6, 0.5),
   });
   const block = new THREE.Mesh(geometry, material);
   block.castShadow = true;
@@ -80,31 +82,33 @@ function createHighQualityBlock() {
   return block;
 }
 
-// ブロック追加
 function addBlock() {
   const block = createHighQualityBlock();
   obstacleGroup.add(block);
 }
 
-// --- ゲームアップデート処理 ---
+// --- ステータス表示 ---
+const status = document.getElementById("status");
+
+// --- ゲーム更新処理 ---
+let lastTime = 0;
+const fpsInterval = 1000 / 30; // 30fps
+
 function update() {
-  // キー入力によるプレイヤーの移動目標更新
+  // プレイヤー移動目標更新
   if (keyState.ArrowUp) playerY += 0.1;
   if (keyState.ArrowDown) playerY -= 0.1;
 
-  // プレイヤーのY座標を滑らかに移動
+  // プレイヤーY座標制限＆スムーズ移動
+  playerY = Math.min(Math.max(playerY, -3), 3);
   player.position.y += (playerY - player.position.y) * 0.2;
 
-  // Y座標の制限（画面外に行かないように）
-  if (player.position.y > 3) player.position.y = 3;
-  if (player.position.y < -3) player.position.y = -3;
-
-  // ブロックを左に動かす
+  // ブロックを左へ移動
   obstacleGroup.children.forEach((block) => {
     block.position.x -= 0.03;
   });
 
-  // 画面外のブロックを削除
+  // 画面外ブロックを削除
   for (let i = obstacleGroup.children.length - 1; i >= 0; i--) {
     if (obstacleGroup.children[i].position.x < -6) {
       obstacleGroup.remove(obstacleGroup.children[i]);
@@ -112,15 +116,25 @@ function update() {
   }
 
   // 衝突判定（簡易）
+  let collision = false;
   obstacleGroup.children.forEach((block) => {
     const dx = player.position.x - block.position.x;
     const dy = player.position.y - block.position.y;
     if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4) {
-      block.material.color.set(0xff0000); // 衝突時に赤色に
-      status.textContent = "衝突しました！";
-      status.className = "error";
+      block.material.color.set(0xff0000);
+      collision = true;
+    } else {
+      // 衝突していない時は元の色に戻す（例として白に）
+      block.material.color.set(0xffffff);
     }
   });
+  if (collision) {
+    status.textContent = "衝突しました！";
+    status.className = "error";
+  } else {
+    status.textContent = "";
+    status.className = "";
+  }
 
   // ランダムでブロック追加
   if (Math.random() < 0.02) addBlock();
@@ -133,6 +147,7 @@ function draw() {
 
 // --- ゲームループ ---
 function gameLoop(time) {
+  if (!lastTime) lastTime = time;
   if (time - lastTime > fpsInterval) {
     lastTime = time;
     update();
@@ -142,7 +157,7 @@ function gameLoop(time) {
 }
 requestAnimationFrame(gameLoop);
 
-// --- 画像アップロード・検索関連 ---
+// --- 画像アップロード関連 ---
 const input = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const button = document.getElementById("uploadButton");
