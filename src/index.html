@@ -2,253 +2,244 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>3D背景＋避けゲー</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D背景付き画像検索＋避けゲー</title>
     <style>
-      body,
-      html {
+      html,
+      body {
         margin: 0;
         padding: 0;
         overflow: hidden;
+        height: 100%;
         font-family: sans-serif;
-        height: 100vh;
-        background: #000;
       }
-      #bgCanvas,
-      #gameCanvas {
+      #bgCanvas {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
         display: block;
       }
-      #bgCanvas {
-        z-index: 0;
+      .container {
+        position: relative;
+        z-index: 10;
+        max-width: 360px;
+        margin: auto;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
       }
-      #gameCanvas {
-        z-index: 1;
-        pointer-events: auto;
-        background: transparent;
+      img {
+        max-width: 300px;
+        margin-top: 10px;
       }
-      #score {
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        color: white;
-        font-size: 20px;
+      #status {
+        margin-top: 10px;
         font-weight: bold;
-        z-index: 2;
-        text-shadow: 0 0 5px black;
+      }
+      #status.error {
+        color: red;
+      }
+      #status.success {
+        color: green;
+      }
+      button {
+        margin-top: 10px;
+        padding: 10px 20px;
+        font-size: 1rem;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        background-color: #0066ff;
+        color: white;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #004bbb;
       }
     </style>
   </head>
   <body>
     <canvas id="bgCanvas"></canvas>
-    <canvas id="gameCanvas"></canvas>
-    <div id="score">SCORE: 0</div>
+
+    <div class="container">
+      <h1>画像で検索</h1>
+      <label for="imageInput">画像を選択してください:</label><br />
+      <input
+        type="file"
+        id="imageInput"
+        accept="image/*"
+        title="アップロードする画像を選択"
+        aria-label="画像ファイルを選択"
+        placeholder="ファイルを選択"
+      />
+      <br />
+      <img id="preview" alt="選択された画像プレビュー" />
+      <br />
+      <button id="uploadButton" onclick="uploadAndSearch()">検索</button>
+      <div id="status" aria-live="polite"></div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
     <script>
-      // === Three.js 3D背景設定 ===
-      const bgCanvas = document.getElementById("bgCanvas");
-      const renderer = new THREE.WebGLRenderer({
-        canvas: bgCanvas,
-        antialias: true,
-        alpha: false,
-      });
+      // THREE.js 初期化
+      const canvas = document.getElementById("bgCanvas");
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setClearColor(0x0a0a0a);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setClearColor(0x080808, 1);
 
       const scene = new THREE.Scene();
+
       const camera = new THREE.PerspectiveCamera(
         75,
         window.innerWidth / window.innerHeight,
         0.1,
-        1000
+        100
       );
-      camera.position.z = 6;
+      camera.position.z = 5;
 
-      // 立方体群を作る
-      const cubes = [];
-      const cubeCount = 50;
-      for (let i = 0; i < cubeCount; i++) {
-        const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-        const mat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+      // ライティング
+      scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+      const light = new THREE.PointLight(0xffffff, 1.0);
+      light.position.set(5, 5, 5);
+      scene.add(light);
+
+      // プレイヤー
+      const playerGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+      const playerMaterial = new THREE.MeshStandardMaterial({
+        color: 0x00aaff,
+      });
+      const player = new THREE.Mesh(playerGeometry, playerMaterial);
+      scene.add(player);
+
+      let playerY = 0;
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowUp") playerY += 0.3;
+        if (e.key === "ArrowDown") playerY -= 0.3;
+      });
+
+      // ノーマルマップ読み込み
+      const textureLoader = new THREE.TextureLoader();
+      const normalMap = textureLoader.load("normal.jpg");
+
+      // 障害物生成
+      const obstacles = [];
+      function spawnObstacle() {
+        const geometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const obstacleMaterial = new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          metalness: 0.6,
+          roughness: 0.3,
+          normalMap: normalMap,
+          clearcoat: 1.0,
+          reflectivity: 1.0,
         });
-        const cube = new THREE.Mesh(geo, mat);
+        const cube = new THREE.Mesh(geometry, obstacleMaterial);
         cube.position.set(
-          (Math.random() - 0.5) * 12,
-          (Math.random() - 0.5) * 8,
-          (Math.random() - 0.5) * 12
+          5,
+          (Math.random() - 0.5) * 4,
+          (Math.random() - 0.5) * 2
         );
         scene.add(cube);
-        cubes.push(cube);
+        obstacles.push(cube);
       }
 
-      // 環境光 + ポイントライト
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-      scene.add(ambientLight);
-      const pointLight = new THREE.PointLight(0xffffff, 0.8);
-      pointLight.position.set(5, 5, 5);
-      scene.add(pointLight);
+      setInterval(spawnObstacle, 1000);
 
-      function animateBG() {
-        requestAnimationFrame(animateBG);
-        cubes.forEach((c, i) => {
-          c.rotation.x += 0.01 + i * 0.0003;
-          c.rotation.y += 0.01 + i * 0.0005;
+      // アニメーションループ
+      function animate() {
+        requestAnimationFrame(animate);
+
+        player.position.y += (playerY - player.position.y) * 0.2;
+
+        obstacles.forEach((cube) => {
+          cube.position.x -= 0.05;
+          cube.rotation.x += 0.01;
+          cube.rotation.y += 0.01;
         });
-        renderer.render(scene, camera);
-      }
-      animateBG();
-
-      // リサイズ対応
-      window.addEventListener("resize", () => {
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        gameCanvas.width = window.innerWidth;
-        gameCanvas.height = window.innerHeight;
-      });
-
-      // === 2D避けゲー設定 ===
-      const gameCanvas = document.getElementById("gameCanvas");
-      const ctx = gameCanvas.getContext("2d");
-      gameCanvas.width = window.innerWidth;
-      gameCanvas.height = window.innerHeight;
-
-      let player = {
-        x: 50,
-        y: gameCanvas.height / 2 - 20,
-        width: 30,
-        height: 30,
-        speed: 6,
-      };
-
-      let obstacles = [];
-      let obstacleTimer = 0;
-      let obstacleInterval = 1500; // ms
-      let lastTime = 0;
-
-      let score = 0;
-      let gameOver = false;
-
-      const keys = {};
-
-      window.addEventListener("keydown", (e) => {
-        keys[e.key] = true;
-      });
-      window.addEventListener("keyup", (e) => {
-        keys[e.key] = false;
-      });
-
-      function spawnObstacle() {
-        const size = 20 + Math.random() * 40;
-        const yPos = Math.random() * (gameCanvas.height - size);
-        obstacles.push({
-          x: gameCanvas.width + size,
-          y: yPos,
-          width: size,
-          height: size,
-          speed: 4 + Math.random() * 3,
-        });
-      }
-
-      function update(delta) {
-        if (gameOver) return;
-
-        // プレイヤー移動（上下）
-        if (keys["ArrowUp"] || keys["w"]) {
-          player.y -= player.speed;
-        }
-        if (keys["ArrowDown"] || keys["s"]) {
-          player.y += player.speed;
-        }
-        if (player.y < 0) player.y = 0;
-        if (player.y + player.height > gameCanvas.height)
-          player.y = gameCanvas.height - player.height;
-
-        // 障害物移動
-        obstacles.forEach((o) => (o.x -= o.speed));
-
-        // 画面外の障害物削除
-        obstacles = obstacles.filter((o) => o.x + o.width > 0);
 
         // 衝突判定
-        for (let o of obstacles) {
-          if (
-            player.x < o.x + o.width &&
-            player.x + player.width > o.x &&
-            player.y < o.y + o.height &&
-            player.y + player.height > o.y
-          ) {
-            gameOver = true;
+        obstacles.forEach((cube) => {
+          const dx = player.position.x - cube.position.x;
+          const dy = player.position.y - cube.position.y;
+          if (Math.abs(dx) < 0.4 && Math.abs(dy) < 0.4) {
+            cube.material.color.set(0xff0000); // 衝突時の視覚効果
           }
-        }
+        });
 
-        // 障害物生成タイミング
-        obstacleTimer += delta;
-        if (obstacleTimer > obstacleInterval) {
-          spawnObstacle();
-          obstacleTimer = 0;
-          // 少しずつ間隔短くして難易度アップ
-          if (obstacleInterval > 600) obstacleInterval -= 20;
-        }
-
-        if (!gameOver) {
-          score += delta * 0.01;
-        }
+        renderer.render(scene, camera);
       }
+      animate();
 
-      function draw() {
-        ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
 
-        // プレイヤー
-        ctx.fillStyle = "#00aaff";
-        ctx.fillRect(player.x, player.y, player.width, player.height);
+      // アップロードと検索
+      const input = document.getElementById("imageInput");
+      const preview = document.getElementById("preview");
+      const status = document.getElementById("status");
+      const button = document.getElementById("uploadButton");
 
-        // 障害物
-        ctx.fillStyle = "#ff4444";
-        obstacles.forEach((o) => ctx.fillRect(o.x, o.y, o.width, o.height));
+      input.addEventListener("change", () => {
+        const file = input.files[0];
+        if (file && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            preview.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
 
-        if (gameOver) {
-          ctx.fillStyle = "rgba(0,0,0,0.7)";
-          ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+      async function uploadAndSearch() {
+        const file = input.files[0];
+        if (!file) {
+          alert("画像を選択してください。");
+          return;
+        }
 
-          ctx.fillStyle = "white";
-          ctx.font = "48px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText(
-            "ゲームオーバー",
-            gameCanvas.width / 2,
-            gameCanvas.height / 2 - 20
+        status.textContent = "検索中...";
+        status.className = "";
+        button.disabled = true;
+
+        try {
+          const response = await fetch(
+            "https://brave-hill-0df254e00.6.azurestaticapps.net/api/imageToVector",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/octet-stream" },
+              body: file,
+            }
           );
-          ctx.font = "24px sans-serif";
-          ctx.fillText(
-            "ページを再読み込みしてリトライしてください",
-            gameCanvas.width / 2,
-            gameCanvas.height / 2 + 20
+
+          if (!response.ok)
+            throw new Error(`${response.status} - ${await response.text()}`);
+
+          const result = await response.json();
+          localStorage.setItem(
+            "similarImages",
+            JSON.stringify(result.similarImages || [])
           );
+          status.textContent = "検索完了、結果ページへ移動します。";
+          status.className = "success";
+          window.location.href = "results.html";
+        } catch (err) {
+          status.textContent = "検索に失敗しました: " + err.message;
+          status.className = "error";
+        } finally {
+          button.disabled = false;
         }
       }
-
-      function gameLoop(timestamp = 0) {
-        if (!lastTime) lastTime = timestamp;
-        const delta = timestamp - lastTime;
-        lastTime = timestamp;
-
-        update(delta);
-        draw();
-
-        document.getElementById("score").textContent =
-          "SCORE: " + Math.floor(score);
-
-        requestAnimationFrame(gameLoop);
-      }
-
-      gameLoop();
     </script>
   </body>
 </html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>検索結果</title>
+  </head>
+  <body>
+    <h1>検索結果</h1>
+    <div id="results"></div>
+
+    <script>
+      const container = document.getElementById("results");
+      const similarImages = JSON.parse(
+        localStorage.getItem("similarImages") || "[]"
+      );
+
+      if (similarImages.length === 0) {
+        container.textContent = "類似画像が見つかりませんでした。";
+      } else {
+        similarImages.forEach((url) => {
+          const img = document.createElement("img");
+          img.src = url;
+          img.style.width = "150px";
+          img.style.margin = "10px";
+          container.appendChild(img);
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -2,6 +2,36 @@ const input = document.getElementById("imageInput");
 const preview = document.getElementById("preview");
 const status = document.getElementById("status");
 const button = document.getElementById("uploadButton");
+const material = new THREE.MeshPhysicalMaterial({
+  color: new THREE.Color(Math.random(), Math.random(), Math.random()),
+  roughness: 0.3,
+  metalness: 0.6,
+  reflectivity: 0.5,
+  clearcoat: 0.2,
+});
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+new THREE.RGBELoader()
+  .setDataType(THREE.UnsignedByteType)
+  .load('path/to/your_envmap.hdr', function(texture) {
+    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+    scene.environment = envMap;
+    scene.background = envMap;
+    texture.dispose();
+    pmremGenerator.dispose();
+  });
+
+const textureLoader = new THREE.TextureLoader();
+const normalMap = textureLoader.load('path/to/normal_map.jpg');
+
+const blockMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  metalness: 0.3,
+  roughness: 0.4,
+  normalMap: normalMap,
+});
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+directionalLight.position.set(5, 10, 5);
+scene.add(directionalLight);
 
 input.addEventListener("change", () => {
   const file = input.files[0];
@@ -60,4 +90,44 @@ async function uploadAndSearch() {
   scene.add(pointLight);
 
   let colorHue = 0;
+  const obstacleGroup = new THREE.Group();
+scene.add(obstacleGroup);
+
+// テクスチャロード（オプション）
+const textureLoader = new THREE.TextureLoader();
+const blockTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/wall.jpg');
+
+// 高品質なブロック生成
+function createHighQualityBlock() {
+  const geometry = new THREE.BoxGeometry(
+    0.4 + Math.random() * 0.4, // 幅にバリエーション
+    0.5 + Math.random() * 0.5, // 高さ
+    0.4 + Math.random() * 0.4  // 奥行き
+  );
+
+  const material = new THREE.MeshStandardMaterial({
+    map: blockTexture,         // テクスチャでリアルな壁感
+    roughness: 0.3,            // 少しツヤ感
+    metalness: 0.2,            // 少し金属感（反射）
+    color: new THREE.Color().setHSL(Math.random(), 0.6, 0.5), // 色に変化
+  });
+
+  const block = new THREE.Mesh(geometry, material);
+  block.castShadow = true;
+  block.receiveShadow = true;
+
+  block.position.set(
+    6,
+    (Math.random() - 0.5) * 4,
+    (Math.random() - 0.5) * 2
+  );
+
+  block.rotation.set(
+    Math.random() * Math.PI,
+    Math.random() * Math.PI,
+    Math.random() * Math.PI
+  );
+
+  return block;
+}
 }
