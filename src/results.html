@@ -3,40 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>検索結果</title>
+    <title>ゲームと画像検索</title>
     <style>
-      #results img {
-        width: 150px;
-        margin: 10px;
-        border-radius: 8px;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+      body {
+        font-family: sans-serif;
       }
-      #results {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: start;
+      #gameContainer {
+        margin-bottom: 30px;
+      }
+      #status {
+        margin-top: 10px;
+        height: 20px;
+      }
+      #searchContainer {
+        margin-top: 30px;
+      }
+      #preview {
+        max-width: 200px;
+        margin-top: 10px;
+        display: block;
       }
     </style>
   </head>
   <body>
-    <h1>検索結果</h1>
-    <div id="results"></div>
+    <h1>ゲームで遊びながら画像検索</h1>
 
-    <script>
-      const container = document.getElementById("results");
-      const similarImages = JSON.parse(
-        localStorage.getItem("similarImages") || "[]"
-      );
+    <div id="gameContainer">
+      <canvas
+        id="game"
+        width="400"
+        height="200"
+        style="border: 1px solid #ccc"
+      ></canvas>
+      <div id="status"></div>
+    </div>
 
-      if (similarImages.length === 0) {
-        container.textContent = "類似画像が見つかりませんでした。";
-      } else {
-        similarImages.forEach((url) => {
-          const img = document.createElement("img");
-          img.src = url;
-          container.appendChild(img);
-        });
-      }
-    </script>
+    <div id="searchContainer">
+      <h2>画像をアップロードして検索</h2>
+      <label for="imageInput">画像を選択してください:</label>
+      <input type="file" id="imageInput" accept="image/*" />
+      <img id="preview" alt="プレビュー" />
+      <button id="uploadButton">検索する</button>
+      <div id="searchStatus"></div>
+    </div>
+
+    <script src="game.js"></script>
+    <script src="search.js"></script>
   </body>
 </html>
