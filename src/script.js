@@ -39,7 +39,7 @@ async function uploadAndSearch() {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`${response.status} - ${errorText}`);
+      throw new Error(${response.status} - ${errorText});
     }
 
     const result = await response.json();
